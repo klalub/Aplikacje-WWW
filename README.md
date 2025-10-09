@@ -6,9 +6,9 @@ Projekt pozwala właścicielowi hodowli zarządzać bazą psów, miotów i szcze
 
 <b>Technologie:</b>
 
-1. Python 3.11+
+1. Python 3.14
 
-2. Django 5.2.*
+2. Django 5.2.7
 
 3. Django REST Framework
 
