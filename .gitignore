@@ -1,0 +1,13 @@
+# Ignoruj środowisko wirtualne
+.venv/
+
+# Ignoruj pliki tymczasowe Pythona
+__pycache__/
+*.pyc
+
+# Ignoruj lokalną bazę danych
+db.sqlite3
+
+# Ignoruj pliki systemowe
+*.log
+.DS_Store
