@@ -12,9 +12,7 @@ Projekt pozwala właścicielowi hodowli zarządzać bazą psów, miotów i szcze
 
 3. Django REST Framework
 
-4. SimpleJWT
-
-5. SQLite (lub PostgreSQL)
+4. SQLite (lub PostgreSQL)
 <h2></h2>
 <b>Modele:</b>
 
@@ -30,7 +28,7 @@ Projekt pozwala właścicielowi hodowli zarządzać bazą psów, miotów i szcze
 <h2></h2>
 <b>Autoryzacja:</b>
 
-JWT (JSON Web Token) z rolami:
+role:
 
 1. admin — pełny dostęp, zarządzanie hodowlą
 
