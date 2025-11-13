@@ -1,6 +1,23 @@
 from django.urls import path
 from . import views
+from . import api_views
 
 urlpatterns = [
-    path("", views.home, name="home"),  # strona główna aplikacji
+    # stara strona powitalna:
+    path('', views.home, name='home'),
+
+    # ---- API BREED ----
+    path('api/breeds/', api_views.breed_list, name='breed-list'),
+    path('api/breeds/<int:pk>/', api_views.breed_detail, name='breed-detail'),
+    path('api/breeds/search/', api_views.breed_search, name='breed-search'),
+
+    # ---- API DOG ----
+    path('api/dogs/', api_views.dog_list, name='dog-list'),
+    path('api/dogs/<int:pk>/', api_views.dog_detail, name='dog-detail'),
+    path('api/dogs/search/', api_views.dog_search, name='dog-search'),
+
+    # ---- API PUPPY ----
+    path('api/puppies/', api_views.puppy_list, name='puppy-list'),
+    path('api/puppies/<int:pk>/', api_views.puppy_detail, name='puppy-detail'),
+    path('api/puppies/search/', api_views.puppy_search, name='puppy-search'),
 ]
