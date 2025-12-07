@@ -2,6 +2,7 @@ import datetime
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import Breed, Dog, Litter, Puppy, Reservation
+from datetime import date
 
 
 # --------------- 1) PRZYKŁAD "ręcznego" Serializer (nie ModelSerializer) ---------------
@@ -23,22 +24,14 @@ class DogSerializer(serializers.Serializer):
 
     # WALIDACJA POLA: name – tylko litery + spacje
     def validate_name(self, value):
-        # pozwalamy na spacje, ale wszystkie znaki (bez spacji) muszą być literami
-        cleaned = value.replace(" ", "")
-        if not cleaned.isalpha():
-            raise serializers.ValidationError(
-                "Imię psa może zawierać tylko litery i spacje."
-            )
-        # opcjonalnie: pierwsza litera wielka
+        if not all(ch.isalpha() or ch.isspace() for ch in value):
+            raise serializers.ValidationError("Imię psa może zawierać tylko litery i spacje.")
         return value
 
     # WALIDACJA POLA: date_of_birth – nie z przyszłości
     def validate_date_of_birth(self, value):
-        today = datetime.date.today()
-        if value > today:
-            raise serializers.ValidationError(
-                "Data urodzenia nie może być z przyszłości."
-            )
+        if value > date.today():
+            raise serializers.ValidationError("Data urodzenia nie może być z przyszłości.")
         return value
 
     def create(self, validated_data):
@@ -142,3 +135,4 @@ class UserRegisterSerializer(serializers.ModelSerializer):
             password=validated_data['password'],
         )
         return user
+
