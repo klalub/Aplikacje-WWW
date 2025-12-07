@@ -82,5 +82,14 @@ class Reservation(models.Model):
     date_reserved = models.DateTimeField(auto_now_add=True)
     notes = models.TextField(blank=True, null=True)
 
+    class Meta:
+        # tylko jedna rezerwacja na danego szczeniaka
+        constraints = [
+            models.UniqueConstraint(
+                fields=['puppy'],
+                name='unique_reservation_per_puppy'
+            )
+        ]
+
     def __str__(self):
         return f"Reservation for {self.puppy.name} by {self.user.username}"

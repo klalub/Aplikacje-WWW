@@ -6,6 +6,14 @@ urlpatterns = [
     # stara strona powitalna:
     path('', views.home, name='home'),
 
+    # ---- AUTH ----
+    path('api/auth/register/', api_views.register_user, name='register'),
+    path('api/auth/login/', api_views.obtain_auth_token, name='login'),
+
+    # ---- RESERVATIONS ----
+    path('api/reservations/', api_views.reservation_list, name='reservation-list'),
+    path('api/reservations/<int:pk>/', api_views.reservation_detail, name='reservation-detail'),
+
     # ---- API BREED ----
     path('api/breeds/', api_views.breed_list, name='breed-list'),
     path('api/breeds/<int:pk>/', api_views.breed_detail, name='breed-detail'),

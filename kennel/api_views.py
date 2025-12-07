@@ -1,10 +1,19 @@
+from django.contrib.auth.models import User
+
+from rest_framework.authtoken.models import Token
 from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
+from rest_framework.permissions import AllowAny, IsAuthenticated
 
-from .models import Breed, Dog, Puppy
-from .serializers import BreedSerializer, DogSerializer, PuppySerializer
-
+from .models import Breed, Dog, Puppy, Reservation
+from .serializers import (
+    BreedSerializer,
+    DogSerializer,
+    PuppySerializer,
+    ReservationSerializer,
+    UserRegisterSerializer,
+)
 
 # ------------- BREED ------------- #
 
@@ -178,3 +187,111 @@ def puppy_search(request):
     puppies = Puppy.objects.filter(name__icontains=query)
     serializer = PuppySerializer(puppies, many=True)
     return Response(serializer.data)
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def reservation_list(request):
+    """
+    GET: lista rezerwacji zalogowanego użytkownika
+    POST: utworzenie nowej rezerwacji dla szczeniaka
+    """
+    if request.method == 'GET':
+        if request.user.is_staff:
+            qs = Reservation.objects.all()
+        else:
+            qs = Reservation.objects.filter(user=request.user)
+        serializer = ReservationSerializer(qs, many=True)
+        return Response(serializer.data)
+
+    if request.method == 'POST':
+        serializer = ReservationSerializer(
+            data=request.data,
+            context={'request': request}
+        )
+        if serializer.is_valid():
+            reservation = serializer.save()
+            return Response(
+                ReservationSerializer(reservation).data,
+                status=status.HTTP_201_CREATED
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ------------- RESERVATION ------------- #
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def reservation_detail(request, pk):
+    """
+    DELETE: anulowanie rezerwacji (user może usuwać swoje, admin wszystkie).
+    """
+    try:
+        reservation = Reservation.objects.get(pk=pk)
+    except Reservation.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    # zwykły user może usunąć tylko swoją rezerwację
+    if not request.user.is_staff and reservation.user != request.user:
+        return Response(status=status.HTTP_403_FORBIDDEN)
+
+    # przed usunięciem przywróć status szczeniaka na available
+    puppy = reservation.puppy
+    reservation.delete()
+    puppy.status = 'available'
+    puppy.save()
+
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+# ------------- AUTH ------------- #
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register_user(request):
+    """
+    Rejestracja nowego użytkownika.
+    """
+    serializer = UserRegisterSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.save()
+        # tworzymy token od razu po rejestracji
+        token, created = Token.objects.get_or_create(user=user)
+        return Response(
+            {
+                'id': user.id,
+                'username': user.username,
+                'token': token.key,
+            },
+            status=status.HTTP_201_CREATED
+        )
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def obtain_auth_token(request):
+    """
+    Logowanie: przyjmuje username + password, zwraca token.
+    """
+    username = request.data.get('username')
+    password = request.data.get('password')
+
+    if not username or not password:
+        return Response(
+            {'detail': 'Podaj username i password.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        user = User.objects.get(username=username)
+    except User.DoesNotExist:
+        return Response(
+            {'detail': 'Nieprawidłowe dane logowania.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    if not user.check_password(password):
+        return Response(
+            {'detail': 'Nieprawidłowe dane logowania.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    token, created = Token.objects.get_or_create(user=user)
+    return Response({'token': token.key})

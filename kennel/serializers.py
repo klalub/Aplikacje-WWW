@@ -21,7 +21,7 @@ class DogSerializer(serializers.Serializer):
     health_tests = serializers.CharField(allow_blank=True, allow_null=True, required=False)
     owner = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
 
-    # 🔹 WALIDACJA POLA: name – tylko litery + spacje
+    # WALIDACJA POLA: name – tylko litery + spacje
     def validate_name(self, value):
         # pozwalamy na spacje, ale wszystkie znaki (bez spacji) muszą być literami
         cleaned = value.replace(" ", "")
@@ -32,7 +32,7 @@ class DogSerializer(serializers.Serializer):
         # opcjonalnie: pierwsza litera wielka
         return value
 
-    # 🔹 WALIDACJA POLA: date_of_birth – nie z przyszłości
+    # WALIDACJA POLA: date_of_birth – nie z przyszłości
     def validate_date_of_birth(self, value):
         today = datetime.date.today()
         if value > today:
@@ -72,7 +72,7 @@ class LitterSerializer(serializers.ModelSerializer):
         fields = ['id', 'mother', 'father', 'birth_date', 'number_of_puppies', 'is_planned']
         read_only_fields = ['id']
 
-    # 🔹 WALIDACJA OBIEKTU – sprawdzamy relację mother/father
+    # WALIDACJA OBIEKTU – sprawdzamy relację mother/father
     def validate(self, data):
         mother = data.get('mother')
         father = data.get('father')
@@ -98,4 +98,47 @@ class ReservationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Reservation
         fields = ['id', 'puppy', 'user', 'date_reserved', 'notes']
-        read_only_fields = ['id', 'date_reserved']
+        read_only_fields = ['id', 'date_reserved', 'user']
+
+    def validate_puppy(self, value):
+        # jeśli szczeniak już ma rezerwację -> błąd
+        if Reservation.objects.filter(puppy=value).exists():
+            raise serializers.ValidationError("Ten szczeniak jest już zarezerwowany.")
+        return value
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            validated_data['user'] = request.user
+
+        # jeszcze raz bezpieczeństwo – gdyby ktoś ominął validate_puppy
+        puppy = validated_data['puppy']
+        if Reservation.objects.filter(puppy=puppy).exists():
+            raise serializers.ValidationError(
+                {"puppy": "Ten szczeniak jest już zarezerwowany."}
+            )
+
+        reservation = super().create(validated_data)
+
+        # opcjonalnie: zmień status szczeniaka na "reserved"
+        puppy.status = 'reserved'
+        puppy.save()
+
+        return reservation
+
+
+class UserRegisterSerializer(serializers.ModelSerializer):
+    """Serializer do rejestracji nowych użytkowników."""
+    password = serializers.CharField(write_only=True, min_length=6)
+
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'password']
+
+    def create(self, validated_data):
+        # używam create_user, żeby hasło było zahashowane
+        user = User.objects.create_user(
+            username=validated_data['username'],
+            password=validated_data['password'],
+        )
+        return user
