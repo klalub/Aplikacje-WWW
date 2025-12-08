@@ -184,25 +184,8 @@ curl -X POST http://127.0.0.1:8000/api/reservations/ \
 ```cpp
 borderhearts/
 │
-├── kennel/
-│   ├── models.py
-│   ├── serializers.py
-│   ├── api_views.py
-│   ├── urls.py
-│   └── static/
-│       └── kennel/
-│           └── border.jpg
-│
-├── borderhearts/
-│   ├── settings.py
-│   └── urls.py
-```
-
-```cpp
-borderhearts/
-│
 ├── manage.py
-├── requirements.txt   ← TU!
+├── requirements.txt
 │
 ├── kennel/
 │   ├── models.py
