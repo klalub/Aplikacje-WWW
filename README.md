@@ -1,41 +1,220 @@
-<h1>🐾 BorderHearts API</h1>
+# 🐶 BorderHearts Kennel API  
+**Projekt API dla hodowli psów rasy Border Collie jako system rezerwacji szczeniąt**
 
-<h3>BorderHearts API to aplikacja webowa Django REST Framework służąca do zarządzania hodowlą psów rasy Border Collie.
-Projekt pozwala właścicielowi hodowli zarządzać bazą psów, miotów i szczeniąt, a klientom przeglądać aktualne mioty oraz rezerwować szczenięta.</h3>
-<h2></h2>
+BorderHearts Kennel API to RESTowe API pozwalające na:
+- przeglądanie psów hodowlanych (suki, reproduktory),
+- przeglądanie miotów oraz szczeniąt,
+- rejestrację i logowanie użytkowników,
+- składanie rezerwacji na wybranego szczeniaka,
+- zabezpieczenie tokenowe (autentykacja),
+- zapobieganie wielokrotnej rezerwacji tego samego szczeniaka.
 
-<b>Technologie:</b>
+Projekt wykonany w ramach przedmiotu **Aplikacje WWW (2025/2026Z)**.
 
-1. Python 3.14
+---
 
-2. Django 5.2.7
+##  Funkcjonalności API
 
-3. Django REST Framework
+### Publiczne (bez logowania)
+- Lista umaszczeń (`/api/breeds/`)
+- Lista psów (`/api/dogs/`)
+- Lista miotów (`/api/litters/`)
+- Lista szczeniąt (`/api/puppies/`)
+- Wyszukiwarka psów / ras / szczeniąt (parametr `?q=`)
 
-4. SQLite (lub PostgreSQL)
-<h2></h2>
-<b>Modele:</b>
+### Wymagające logowania Tokenem
+- Tworzenie rezerwacji szczeniaka
+- Usuwanie własnej rezerwacji
+- Przegląd własnych rezerwacji
 
-1. User — użytkownik (admin / klient)
+### Obsługa użytkowników
+- Rejestracja (`/api/register/`)
+- Logowanie i pobranie tokena (`/api/token/`)
 
-2. Dog — pies hodowlany
+---
 
-3. Litter — miot (rodzice, data, liczba szczeniąt)
+## Technologie
+- **Python 3.12**
+- **Django 5.2**
+- **Django REST Framework**
+- Token Authentication (DRF)
 
-4. Puppy — szczeniak (status: wolny / zarezerwowany / sprzedany)
+---
 
-5. Reservation — rezerwacja dokonana przez użytkownika
-<h2></h2>
-<b>Autoryzacja:</b>
+## Instalacja i uruchomienie projektu
 
-role:
+```bash
+git clone https://github.com/klalub/Aplikacje-WWW.git
+cd borderhearts
 
-1. admin — pełny dostęp, zarządzanie hodowlą
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
 
-2. user — przeglądanie szczeniąt, tworzenie rezerwacji
-<h2></h2>
-<b>Autor:</b>
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
+```
 
-Klaudia Lubiejewska
+## Rejestracja i logowanie (token)
 
-Semestr 2025/2026 – Aplikacje WWW
+### Rejestracja użytkownika
+
+POST (`/api/register/`)
+#### Body:
+```json
+{
+  "username": "client1",
+  "password": "test1234"
+}
+```
+#### Odpowiedź:
+```json
+{
+  "id": 3,
+  "username": "client1",
+  "token": "89f0c1c83dd5ffa24f11b8af78d91c0ffd2cbd22"
+}
+```
+### Logowanie – pobranie tokena
+POST (`/api/token/`)
+#### Body:
+```json
+{
+  "username": "client1",
+  "password": "test1234"
+}
+```
+#### Odpowiedź:
+```json
+{
+  "token": "89f0c1c83dd5ffa24f11b8af78d91c0ffd2cbd22"
+}
+```
+
+Token dodajemy w Postmanie jako:
+(`Authorization: Token <TWÓJ_TOKEN>`)
+
+## Modele danych
+### 1 Breed – rasa
+```bash
+id, name, color_pattern, description
+```
+
+### 2 Dog – dorosły pies
+```bash
+id, name, breed, gender, date_of_birth, color, description, health_tests, owner
+```
+
+#### Walidacje:
+
+- imię tylko litery i spacje,
+- data urodzenia nie może być z przyszłości.
+
+### 3 Litter – miot
+```bash
+id, mother, father, birth_date, number_of_puppies, is_planned
+```
+#### Walidacje:
+- matka ≠ ojciec
+- różne płcie rodziców
+
+### 4 Puppy – szczeniak
+```bash
+id, litter, name, gender, color, description, status ("available" / "reserved")
+```
+#### Walidacje:
+- imię tylko litery i spacje
+
+### 5 Reservation – rezerwacja
+```bash
+id, puppy, user, date_reserved, notes
+```
+#### Walidacje:
+- szczeniak może mieć tylko jedną rezerwację
+
+## Najważniejsze Endpointy
+### Lista psów
+GET (`/api/dogs/`)
+### Dodanie psa
+POST (`/api/dogs/`)
+- (wymagane pola: imię, gender, date_of_birth, owner)
+### Lista szczeniąt
+GET (`/api/puppies/`)
+### Rezerwacja
+POST (`/api/reservations/`)
+- Nagłówek: (`Authorization: Token <token>`)
+#### Body:
+```json
+{
+  "puppy": 1,
+  "notes": "Poproszę o kontakt w sprawie odbioru."
+}
+```
+#### Odpowiedź:
+```json
+{
+  "id": 5,
+  "puppy": 1,
+  "user": 3,
+  "date_reserved": "2025-01-15",
+  "notes": "Poproszę o kontakt w sprawie odbioru."
+}
+```
+#### Jeśli szczeniak już zarezerwowany:
+```json
+{
+  "puppy": ["Ten szczeniak jest już zarezerwowany."]
+}
+```
+
+## Przykładowe zapytania CURL
+### Pobranie listy psów
+```bash
+curl http://127.0.0.1:8000/api/dogs/
+```
+### Rezerwacja szczeniaka
+```bash
+curl -X POST http://127.0.0.1:8000/api/reservations/ \
+  -H "Authorization: Token TWOJ_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"puppy": 1}'
+```
+
+## Struktura projektu
+```cpp
+borderhearts/
+│
+├── kennel/
+│   ├── models.py
+│   ├── serializers.py
+│   ├── api_views.py
+│   ├── urls.py
+│   └── static/
+│       └── kennel/
+│           └── border.jpg
+│
+├── borderhearts/
+│   ├── settings.py
+│   └── urls.py
+```
+
+```cpp
+borderhearts/
+│
+├── manage.py
+├── requirements.txt   ← TU!
+│
+├── kennel/
+│   ├── models.py
+│   ├── serializers.py
+│   ├── api_views.py
+│   └── urls.py
+│   └── static/
+│       └── kennel/
+│           └── border.jpg
+│
+└── borderhearts/
+    ├── settings.py
+    └── urls.py
+```
+
