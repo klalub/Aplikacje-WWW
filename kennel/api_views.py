@@ -6,11 +6,12 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
-from .models import Breed, Dog, Puppy, Reservation
+from .models import Breed, Dog, Puppy, Litter, Reservation
 from .serializers import (
     BreedSerializer,
     DogSerializer,
     PuppySerializer,
+    LitterSerializer,
     ReservationSerializer,
     UserRegisterSerializer,
 )
@@ -130,6 +131,74 @@ def dog_search(request):
     serializer = DogSerializer(dogs, many=True)
     return Response(serializer.data)
 
+# ------------- LITTER ------------- #
+
+@api_view(['GET', 'POST'])
+def litter_list(request):
+    """
+    GET: lista wszystkich miotów
+    POST: dodanie nowego miotu
+    """
+    if request.method == 'GET':
+        litters = Litter.objects.all()
+        serializer = LitterSerializer(litters, many=True)
+        return Response(serializer.data)
+
+    if request.method == 'POST':
+        serializer = LitterSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET', 'PUT', 'DELETE'])
+def litter_detail(request, pk):
+    """
+    Operacje na pojedynczym miocie (Litter).
+    """
+    try:
+        litter = Litter.objects.get(pk=pk)
+    except Litter.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        serializer = LitterSerializer(litter)
+        return Response(serializer.data)
+
+    elif request.method == 'PUT':
+        serializer = LitterSerializer(litter, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        # Opcja bezpieczna: nie pozwalamy usunąć miotu, jeśli ma szczenięta
+        if Puppy.objects.filter(litter=litter).exists():
+            return Response(
+                {"detail": "Nie można usunąć miotu, który ma przypisane szczenięta."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        litter.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(['GET'])
+def litter_puppies(request, pk):
+    """
+    Lista szczeniąt należących do danego miotu.
+    /api/litters/<pk>/puppies/
+    """
+    try:
+        litter = Litter.objects.get(pk=pk)
+    except Litter.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    puppies = Puppy.objects.filter(litter=litter)
+    serializer = PuppySerializer(puppies, many=True)
+    return Response(serializer.data)
 
 # ------------- PUPPY ------------- #
 

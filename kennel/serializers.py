@@ -1,7 +1,7 @@
 import datetime
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Breed, Dog, Litter, Puppy, Reservation
+from .models import Breed, Dog, Puppy, Litter, Reservation
 from datetime import date
 
 
@@ -59,13 +59,36 @@ class BreedSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
 
-class LitterSerializer(serializers.ModelSerializer):
+class PuppySerializer(serializers.ModelSerializer):
     class Meta:
-        model = Litter
-        fields = ['id', 'mother', 'father', 'birth_date', 'number_of_puppies', 'is_planned']
+        model = Puppy
+        fields = ['id', 'litter', 'name', 'gender', 'color', 'description', 'status']
         read_only_fields = ['id']
 
-    # WALIDACJA OBIEKTU – sprawdzamy relację mother/father
+    # WALIDACJA POLA: name – tylko litery + spacje
+    def validate_name(self, value):
+        if not all(ch.isalpha() or ch.isspace() for ch in value):
+            raise serializers.ValidationError("Imię szczeniaka może zawierać tylko litery i spacje.")
+        return value
+
+
+class LitterSerializer(serializers.ModelSerializer):
+    # read-only lista szczeniąt w danym miocie
+    puppies = PuppySerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Litter
+        fields = [
+            'id',
+            'mother',
+            'father',
+            'birth_date',
+            'number_of_puppies',
+            'is_planned',
+            'puppies',          # <-- nowe pole
+        ]
+        read_only_fields = ['id', 'puppies']
+
     def validate(self, data):
         mother = data.get('mother')
         father = data.get('father')
@@ -77,15 +100,6 @@ class LitterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Matka i ojciec muszą mieć różną płeć.")
 
         return data
-
-
-
-class PuppySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Puppy
-        fields = ['id', 'litter', 'name', 'gender', 'color', 'description', 'status']
-        read_only_fields = ['id']
-
 
 class ReservationSerializer(serializers.ModelSerializer):
     class Meta:
